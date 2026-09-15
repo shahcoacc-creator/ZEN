@@ -73,7 +73,15 @@
   .name { font-weight: 600; }
   .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
   .amt { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
-  .dr { color: var(--dr); } .cr { color: var(--cr); }
+  /*
+    Dr is the ordinary case — most parties owe us — so it takes the normal text
+    colour rather than a warning colour: white on the dark theme, near-black on
+    the light one. Literal white would vanish against a light background.
+    Red is kept for the two places that mean something is wrong: a failed sign
+    in, and a loss on the Profit & Loss.
+  */
+  .dr { color: var(--ink); } .cr { color: var(--cr); }
+  .loss { color: var(--dr); }
   .tag { font-size: 11px; color: var(--muted); font-weight: 500; }
   .summary {
     background: var(--card); border: 1px solid var(--line); border-radius: 10px;
@@ -327,7 +335,7 @@
 
       html += '<div class="pl"><div class="l">' +
         '<span class="net">Net</span>' +
-        '<span class="net v ' + (d.net >= 0 ? 'cr' : 'dr') + '">' +
+        '<span class="net v ' + (d.net >= 0 ? 'cr' : 'loss') + '">' +
         (d.net < 0 ? '(' + money(d.net) + ')' : money(d.net)) + '</span></div>' +
         '<div class="l"><span class="note">' + esc(PERIOD.label) + '</span>' +
         '<span class="note">' + (d.net >= 0 ? 'profit' : 'loss') + '</span></div></div>';
