@@ -32,3 +32,514 @@
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #101216; --card: #191c22; --ink: #e8eaed; --muted: #9aa1ad;
+      --line: #2a2e37; --dr: #ff8a80; --cr: #6ddba0;  --accent: #7aa2f7;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  header {
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    padding: 14px 16px 10px; border-bottom: 1px solid var(--line);
+  }
+  h1 { margin: 0 0 10px; font-size: 19px; letter-spacing: -0.01em; }
+  .bar { display: flex; justify-content: space-between; align-items: center; }
+  button.link { background: none; border: 0; color: var(--accent); font-size: 15px;
+                padding: 0 0 8px; cursor: pointer; }
+  input { width: 100%; padding: 12px 13px; font-size: 16px; color: var(--ink);
+          background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  main { padding: 10px 12px 32px; }
+
+  .signin { max-width: 380px; margin: 12vh auto 0; padding: 0 20px; }
+  .signin h2 { margin: 0 0 4px; font-size: 22px; }
+  .signin p.note { margin: 0 0 22px; }
+  .signin input { margin-bottom: 10px; }
+  .signin button {
+    width: 100%; padding: 13px; font-size: 16px; font-weight: 600; cursor: pointer;
+    color: #fff; background: var(--accent); border: 0; border-radius: 10px;
+  }
+  .signin button[disabled] { opacity: .6; }
+  .error { color: var(--dr); margin: 12px 0 0; font-size: 14px; }
+
+  .row {
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 8px; cursor: pointer;
+  }
+  .row:active { opacity: .6; }
+  .name { font-weight: 600; }
+  .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .amt { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+  /*
+    Dr is the ordinary case — most parties owe us — so it takes the normal text
+    colour rather than a warning colour: white on the dark theme, near-black on
+    the light one. Literal white would vanish against a light background.
+    Red is kept for the two places that mean something is wrong: a failed sign
+    in, and a loss on the Profit & Loss.
+  */
+  .dr { color: var(--ink); } .cr { color: var(--cr); }
+  .loss { color: var(--dr); }
+  .tag { font-size: 11px; color: var(--muted); font-weight: 500; }
+  .summary {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px; margin-bottom: 12px; display: flex; justify-content: space-between;
+  }
+  .summary .big { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 9px 6px; text-align: right; font-variant-numeric: tabular-nums;
+           border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  th { color: var(--muted); font-weight: 500; font-size: 11.5px;
+       text-transform: uppercase; letter-spacing: .04em; }
+  th:first-child, td:first-child { text-align: left; }
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .note { color: var(--muted); font-size: 12px; }
+  .more {
+    display: block; width: 100%; margin-top: 14px; padding: 12px;
+    font-size: 15px; color: var(--accent); cursor: pointer;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  }
+  /* Small and quiet, in the balance panel. It is a thing you reach for now and
+     then, not the point of the screen — so it sits in WhatsApp's green only as
+     a thin outline, enough to say what it does without shouting it. */
+  .share {
+    margin-top: 8px; padding: 4px 10px; font-size: 12px; font-weight: 600;
+    color: #128c4a; background: transparent; cursor: pointer;
+    border: 1px solid #25d366; border-radius: 999px; line-height: 1.6;
+  }
+  @media (prefers-color-scheme: dark) { .share { color: #6ddba0; } }
+  .empty { color: var(--muted); text-align: center; padding: 40px 20px; }
+
+  .chips {
+    display: flex; gap: 6px; margin-top: 10px; overflow-x: auto;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: 0 0 auto; padding: 6px 12px; font-size: 13px; cursor: pointer;
+    color: var(--ink); background: var(--card);
+    border: 1px solid var(--line); border-radius: 999px; white-space: nowrap;
+  }
+  .chip.on { color: #fff; background: var(--accent); border-color: var(--accent); }
+  .range { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  .range input { padding: 8px 10px; font-size: 14px; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+  .tab {
+    flex: 1; padding: 9px; font-size: 14px; cursor: pointer;
+    color: var(--muted); background: none; border: 0;
+    border-bottom: 2px solid var(--line);
+  }
+  .tab.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
+
+  .pl { background: var(--card); border: 1px solid var(--line);
+        border-radius: 10px; padding: 4px 14px 10px; margin-bottom: 12px; }
+  .pl .l { display: flex; justify-content: space-between; padding: 9px 0;
+           border-bottom: 1px solid var(--line); }
+  .pl .l:last-child { border-bottom: 0; }
+  .pl .head { font-weight: 600; font-size: 12px; text-transform: uppercase;
+              letter-spacing: .04em; color: var(--muted); padding-top: 14px; }
+  .pl .v { font-variant-numeric: tabular-nums; }
+  .pl .tot { font-weight: 600; }
+  .pl .net { font-size: 19px; font-weight: 700; }
+  .pl .sub { padding-left: 12px; }
+</style>
+</head>
+<body>
+
+<div id="signin" class="signin">
+  <h2>Ledgers</h2>
+  <p class="note">Sign in to continue.</p>
+  <input id="u" type="text" placeholder="Username" autocapitalize="none" autocomplete="username">
+  <input id="p" type="password" placeholder="Password" autocomplete="current-password">
+  <button id="go">Sign in</button>
+  <p class="error" id="err" hidden></p>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <div class="bar">
+      <button class="link" id="back" hidden>‹ All parties</button>
+      <span></span>
+      <button class="link" id="out">Sign out</button>
+    </div>
+    <h1 id="title">Ledgers</h1>
+    <div class="tabs">
+      <button class="tab on" id="tabLedgers">Ledgers</button>
+      <button class="tab" id="tabPL">Profit &amp; Loss</button>
+    </div>
+    <input type="search" id="search" placeholder="Search a party" autocomplete="off">
+    <div class="chips" id="periods"></div>
+    <div class="range" id="range" hidden>
+      <input type="date" id="from"><span class="note">to</span><input type="date" id="to">
+      <button class="link" id="apply">Apply</button>
+    </div>
+  </header>
+  <main id="main"><div class="empty">Loading…</div></main>
+</div>
+
+<script>
+  /* The one line to change if the script is ever redeployed to a new address. */
+  var API = 'https://script.google.com/macros/s/AKfycbyUlbk-ydY9eOCW6kLPI7zeDj-3VjQaqaR83xf1AN50dR9jfKgbRD0RLz4VCTd3aTXV/exec';
+
+  var TOKEN = null, parties = [], current = null, VIEW = 'ledgers', FY = null;
+  var lastLedger = null;   // what the ledger screen is showing, so Share sends that and not something else
+  var PERIOD = { from: '', to: '', label: '' };
+  var $ = function (id) { return document.getElementById(id); };
+
+  try { TOKEN = localStorage.getItem('ledger_token'); } catch (e) {}
+
+  /**
+   * Every request to the script goes through here.
+   *
+   * POST with a text/plain content type on purpose: it counts as a "simple"
+   * request, so the browser sends it straight out instead of asking permission
+   * first with an OPTIONS call, which Apps Script cannot answer. It also keeps
+   * the password and the token out of the web address, where they would end up
+   * in browser history and server logs.
+   */
+  function api(action, params) {
+    var body = Object.assign({ action: action }, params || {});
+    return fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      if (!r.ok) throw new Error('The server answered ' + r.status + '.');
+      return r.json();
+    }).then(function (j) {
+      if (j.ok) return j;
+      var err = new Error(j.error || 'Something went wrong.');
+      err.expired = !!j.expired;
+      throw err;
+    });
+  }
+
+  function money(n) {
+    return Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function side(n) { return n >= 0 ? 'Dr' : 'Cr'; }   // + party owes us, - we owe them
+  function cls(n)  { return n >= 0 ? 'dr' : 'cr'; }
+  function esc(s)  { return String(s == null ? '' : s).replace(/[&<>"]/g,
+                      function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]; }); }
+
+  // --- sign in --------------------------------------------------------------
+
+  function signIn() {
+    $('go').disabled = true; $('go').textContent = 'Signing in…'; $('err').hidden = true;
+
+    api('login', { username: $('u').value, password: $('p').value })
+      .then(function (r) {
+        TOKEN = r.token;
+        try { localStorage.setItem('ledger_token', TOKEN); } catch (e) {}
+        $('p').value = '';
+        $('go').disabled = false; $('go').textContent = 'Sign in';
+        start();
+      })
+      .catch(function (e) {
+        $('go').disabled = false; $('go').textContent = 'Sign in';
+        $('err').textContent = e.message; $('err').hidden = false;
+      });
+  }
+
+  function signOut() {
+    api('logout', { token: TOKEN }).catch(function () {});
+    TOKEN = null;
+    try { localStorage.removeItem('ledger_token'); } catch (e) {}
+    $('app').hidden = true; $('signin').hidden = false;
+  }
+
+  /** Any dead token lands here, from any screen, and returns to the login box. */
+  function fail(e) {
+    if (e.expired) {
+      TOKEN = null;
+      try { localStorage.removeItem('ledger_token'); } catch (e2) {}
+      $('app').hidden = true; $('signin').hidden = false;
+      $('err').textContent = e.message; $('err').hidden = false;
+      return;
+    }
+    $('main').innerHTML = '<div class="empty">Could not load.<br>' +
+      '<span class="note">' + esc(e.message) + '</span></div>';
+  }
+
+  // --- the period on screen -------------------------------------------------
+
+  function buildPeriods(fy) {
+    FY = fy;
+    PERIOD = { from: fy.from, to: fy.to, label: fy.label };
+
+    var html = '<button class="chip on" data-k="fy">' + esc(fy.label) + '</button>';
+    fy.months.forEach(function (m, i) {
+      html += '<button class="chip" data-k="m' + i + '">' + esc(m.label) + '</button>';
+    });
+    html += '<button class="chip" data-k="range">Dates…</button>';
+    $('periods').innerHTML = html;
+
+    Array.prototype.forEach.call(document.querySelectorAll('.chip'), function (el) {
+      el.onclick = function () {
+        Array.prototype.forEach.call(document.querySelectorAll('.chip'), function (c) {
+          c.classList.remove('on');
+        });
+        el.classList.add('on');
+        var k = el.dataset.k;
+
+        if (k === 'range') {
+          $('range').hidden = false;
+          if (!$('from').value) { $('from').value = FY.from; $('to').value = FY.to; }
+          return;
+        }
+        $('range').hidden = true;
+
+        if (k === 'fy') PERIOD = { from: FY.from, to: FY.to, label: FY.label };
+        else {
+          var m = FY.months[Number(k.slice(1))];
+          PERIOD = { from: m.from, to: m.to, label: m.label + ' ' + m.year };
+        }
+        reload();
+      };
+    });
+
+    $('apply').onclick = function () {
+      if (!$('from').value || !$('to').value) return;
+      PERIOD = { from: $('from').value, to: $('to').value,
+                 label: $('from').value + ' to ' + $('to').value };
+      reload();
+    };
+  }
+
+  function reload() {
+    if (VIEW === 'pl') { showProfitLoss(); return; }
+    if (current) { openLedger(current); return; }
+    $('main').innerHTML = '<div class="empty">Loading…</div>';
+    api('parties', { token: TOKEN, from: PERIOD.from, to: PERIOD.to })
+      .then(function (r) { parties = r.data; showList($('search').value); })
+      .catch(fail);
+  }
+
+  // --- profit & loss --------------------------------------------------------
+
+  function showProfitLoss() {
+    VIEW = 'pl';
+    current = null;
+    $('tabPL').classList.add('on'); $('tabLedgers').classList.remove('on');
+    $('search').hidden = true; $('back').hidden = true;
+    $('title').textContent = 'Profit & Loss';
+    $('main').innerHTML = '<div class="empty">Loading…</div>';
+
+    api('pnl', { token: TOKEN, from: PERIOD.from, to: PERIOD.to }).then(function (r) {
+      var d = r.data;
+      var html = '<div class="pl">' +
+        '<div class="l head"><span>Income</span><span></span></div>' +
+        line('Sales', d.sales) +
+        '<div class="l head"><span>Costs</span><span></span></div>' +
+        line('Purchases', d.purchases);
+
+      d.expenses.forEach(function (e) { html += line(e.name, e.amount, 'sub'); });
+      if (!d.expenses.length) {
+        html += '<div class="l sub"><span class="note">No expenses in this period</span><span></span></div>';
+      }
+
+      html += line('Total costs', d.totalCost, 'tot') + '</div>';
+
+      // Bills entered on the Expense tab and not yet paid. Shown apart from the
+      // costs on purpose: nothing has been spent, so it is not a cost yet —
+      // but it should not look as though those entries went nowhere.
+      if (d.billsRecorded) {
+        html += '<div class="pl"><div class="l">' +
+          '<span class="note">Bills recorded, not yet paid</span>' +
+          '<span class="note v">' + money(d.billsRecorded) + '</span></div>' +
+          '<div class="l"><span class="note">Counted when the money leaves</span>' +
+          '<span></span></div></div>';
+      }
+
+      html += '<div class="pl"><div class="l">' +
+        '<span class="net">Net</span>' +
+        '<span class="net v ' + (d.net >= 0 ? 'cr' : 'loss') + '">' +
+        (d.net < 0 ? '(' + money(d.net) + ')' : money(d.net)) + '</span></div>' +
+        '<div class="l"><span class="note">' + esc(PERIOD.label) + '</span>' +
+        '<span class="note">' + (d.net >= 0 ? 'profit' : 'loss') + '</span></div></div>';
+
+      $('main').innerHTML = html;
+    }).catch(fail);
+  }
+
+  function line(label, value, cls2) {
+    return '<div class="l ' + (cls2 || '') + '"><span>' + esc(label) + '</span>' +
+           '<span class="v ' + (cls2 === 'tot' ? 'tot' : '') + '">' + money(value) + '</span></div>';
+  }
+
+  function showLedgers() {
+    VIEW = 'ledgers';
+    current = null;
+    $('tabLedgers').classList.add('on'); $('tabPL').classList.remove('on');
+    $('search').hidden = false; $('back').hidden = true;
+    $('title').textContent = 'Ledgers';
+    reload();
+  }
+
+  // --- the ledgers ----------------------------------------------------------
+
+  function start() {
+    $('signin').hidden = true; $('app').hidden = false;
+    $('main').innerHTML = '<div class="empty">Loading…</div>';
+    api('periods', { token: TOKEN })
+      .then(function (r) {
+        buildPeriods(r.data);
+        return api('parties', { token: TOKEN, from: PERIOD.from, to: PERIOD.to });
+      })
+      .then(function (r) { parties = r.data; backToList(); })
+      .catch(fail);
+  }
+
+  function showList(filter) {
+    var q = (filter || '').trim().toLowerCase();
+    var shown = parties.filter(function (p) { return p.name.toLowerCase().indexOf(q) !== -1; });
+
+    $('main').innerHTML = shown.length === 0
+      ? '<div class="empty">' + (parties.length ? 'No party matches that.' : 'No entries yet.') + '</div>'
+      : shown.map(function (p, i) {
+          return '<div class="row" data-i="' + i + '">' +
+                   '<div><div class="name">' + esc(p.name) + '</div>' +
+                   '<div class="sub">' + p.count + ' entries' +
+                     (p.last ? ' · last ' + esc(p.last) : '') + '</div></div>' +
+                   '<div class="amt ' + cls(p.balance) + '">' + money(p.balance) +
+                   ' <span class="tag">' + side(p.balance) + '</span></div>' +
+                 '</div>';
+        }).join('');
+
+    Array.prototype.forEach.call(document.querySelectorAll('.row'), function (el) {
+      el.onclick = function () { openLedger(shown[+el.dataset.i].name); };
+    });
+  }
+
+  function openLedger(name, showAll) {
+    current = name;
+    $('main').innerHTML = '<div class="empty">Loading…</div>';
+    $('search').hidden = true; $('back').hidden = false;
+    $('title').textContent = name;
+
+    api('ledger', { token: TOKEN, party: name, showAll: !!showAll,
+                    from: PERIOD.from, to: PERIOD.to }).then(function (r) {
+      var d = r.data;
+      lastLedger = d;
+      var first = d.hidden
+        ? '<tr><td class="note">—</td>' +
+          '<td class="note">Brought forward · ' + d.hidden + ' earlier ' +
+            (d.hidden === 1 ? 'entry' : 'entries') + '</td><td></td><td></td>' +
+          '<td class="' + cls(d.broughtForward) + '">' + money(d.broughtForward) +
+          ' ' + side(d.broughtForward) + '</td></tr>'
+        : '<tr><td class="note">—</td><td class="note">' +
+          (d.periodOpening ? 'Balance b/f' : 'Opening balance') +
+          '</td><td></td><td></td>' +
+          '<td class="' + cls(d.opening) + '">' + money(d.opening) +
+          ' ' + side(d.opening) + '</td></tr>';
+
+      $('main').innerHTML =
+        '<div class="summary"><div><div class="note">Balance</div>' +
+          '<div class="big ' + cls(d.balance) + '">' + money(d.balance) +
+          ' <span class="tag">' + side(d.balance) + '</span></div></div>' +
+          '<div style="text-align:right"><div class="note">Debit ' + money(d.totalDebit) + '</div>' +
+          '<div class="note">Credit ' + money(d.totalCredit) + '</div>' +
+          '<button class="share" id="share">WhatsApp</button></div></div>' +
+        '<div class="scroll"><table><thead><tr>' +
+          '<th>Date</th><th>Particulars</th><th>Debit</th><th>Credit</th><th>Balance</th>' +
+        '</tr></thead><tbody>' + first +
+        d.lines.map(function (l) {
+          return '<tr><td>' + esc(l.date) + '</td>' +
+            '<td>' + esc(l.source) + (l.ref ? ' · ' + esc(l.ref) : '') +
+            (l.particulars ? '<div class="note">' + esc(l.particulars) + '</div>' : '') + '</td>' +
+            '<td>' + (l.debit  ? money(l.debit)  : '') + '</td>' +
+            '<td>' + (l.credit ? money(l.credit) : '') + '</td>' +
+            '<td class="' + cls(l.running) + '">' + money(l.running) + ' ' + side(l.running) + '</td></tr>';
+        }).join('') +
+        '</tbody></table></div>' +
+        (d.hidden
+          ? '<button class="more" id="all">Show all ' + d.total + ' entries</button>'
+          : (d.total ? '<p class="note" style="text-align:center;margin-top:14px">' +
+                       d.total + ' entries in full</p>' : ''));
+
+      if ($('all')) $('all').onclick = function () { openLedger(current, true); };
+      $('share').onclick = shareLedger;
+    }).catch(fail);
+  }
+
+  // --- sending a ledger -----------------------------------------------------
+
+  /**
+   * The ledger as plain text, with WhatsApp's own *bold* markers.
+   *
+   * It sends EXACTLY what is on screen — same period, same entries, same
+   * figures — so what the customer receives and what you are looking at can
+   * never disagree. Nothing is recalculated here.
+   */
+  function ledgerText() {
+    var d = lastLedger;
+    if (!d) return '';
+
+    var L = ['*' + current + '*', PERIOD.label, ''];
+
+    L.push(d.hidden
+      ? 'Brought forward (' + d.hidden + ' earlier ' +
+        (d.hidden === 1 ? 'entry' : 'entries') + '): ' +
+        money(d.broughtForward) + ' ' + side(d.broughtForward)
+      : (d.periodOpening ? 'Balance b/f: ' : 'Opening: ') +
+        money(d.opening) + ' ' + side(d.opening));
+    L.push('');
+
+    d.lines.forEach(function (l) {
+      L.push(l.date + '  ' + l.source + (l.ref ? '  ' + l.ref : ''));
+      if (l.particulars) L.push(l.particulars);
+      L.push((l.debit ? 'Dr ' + money(l.debit) : 'Cr ' + money(l.credit)) +
+             '   bal ' + money(l.running) + ' ' + side(l.running));
+      L.push('');
+    });
+
+    L.push('*Closing: ' + money(d.balance) + ' ' + side(d.balance) + '*');
+    L.push('Debit ' + money(d.totalDebit) + '  ·  Credit ' + money(d.totalCredit));
+    L.push('');
+    L.push('SHAH & CO');
+    return L.join('\n');
+  }
+
+  function shareLedger() {
+    var text = ledgerText();
+    if (!text) return;
+
+    // A long ledger will not survive being carried in a link. Rather than send
+    // a message that stops mid-figure, it is cut from the TOP — the recent
+    // entries and the closing balance are the part anyone is asking for — and
+    // it says on its face that it was cut.
+    if (text.length > 1800) {
+      var tail = text.slice(-1700);
+      text = '*' + current + '*\n' + PERIOD.label +
+             '\n_Most recent entries only — ask for the full ledger if you need it._\n\n' +
+             tail.slice(tail.indexOf('\n') + 1);
+    }
+
+    // No number in the link, so WhatsApp asks who to send it to. Works the same
+    // on a phone and on WhatsApp Web.
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  }
+
+  function backToList() {
+    current = null;
+    $('search').hidden = false; $('back').hidden = true;
+    $('title').textContent = 'Ledgers';
+    showList($('search').value);
+  }
+
+  $('go').onclick = signIn;
+  $('p').onkeydown = function (e) { if (e.key === 'Enter') signIn(); };
+  $('u').onkeydown = function (e) { if (e.key === 'Enter') $('p').focus(); };
+  $('back').onclick = backToList;
+  $('out').onclick = signOut;
+  $('tabLedgers').onclick = showLedgers;
+  $('tabPL').onclick = showProfitLoss;
+  $('search').oninput = function () { showList(this.value); };
+
+  if (TOKEN) start();
+</script>
+</body>
+</html>
