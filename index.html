@@ -460,7 +460,7 @@
       (note ? '<div class="msg">' + esc(note) + '</div>' : '') +
       '<div class="field"><label>Party</label>' +
         '<input id="oparty" list="partyList" autocomplete="off" ' +
-               'placeholder="Start typing a name" value="' + esc(draftParty) + '">' +
+               'placeholder="Pick one, or type a new name" value="' + esc(draftParty) + '">' +
         '<p class="note" id="partynote" style="margin:6px 0 0"></p></div>' +
       '<datalist id="partyList">' +
         parties.map(function (p) { return '<option value="' + esc(p.name) + '">'; }).join('') +
@@ -572,7 +572,15 @@
   function judgeParty() {
     var typed = ($('oparty').value || '').trim();
     var note = $('partynote');
-    if (!typed) { note.textContent = ''; note.style.color = ''; return; }
+
+    // Said BEFORE anything is typed, not after. A new party can be opened from
+    // here, and an affordance nobody can see is one nobody uses — the whole
+    // reason for asking "can I not add a party through the app?".
+    if (!typed) {
+      note.style.color = '';
+      note.textContent = 'A name not on the list opens a new party.';
+      return;
+    }
 
     if (parties.some(function (p) { return sameName(p.name, typed); })) {
       note.textContent = ''; note.style.color = '';
