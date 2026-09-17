@@ -51,7 +51,40 @@
                 padding: 0 0 8px; cursor: pointer; }
   input { width: 100%; padding: 12px 13px; font-size: 16px; color: var(--ink);
           background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  /* A flex or grid rule beats the hidden attribute, so the date row and the
+     period chips stayed on screen after being hidden. This settles it once for
+     every element rather than per rule. */
+  [hidden] { display: none !important; }
+  select { width: 100%; padding: 12px 13px; font-size: 16px; color: var(--ink);
+           background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
   main { padding: 10px 12px 32px; }
+
+  /* the order form */
+  .field { margin-top: 10px; }
+  .field > label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px; margin-top: 10px;
+  }
+  .card .head { display: flex; justify-content: space-between; align-items: baseline; }
+  .card .head b { font-size: 13px; }
+  .tick { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-top: 10px; }
+  .tick input { width: auto; }
+  .primary {
+    display: block; width: 100%; margin-top: 14px; padding: 13px;
+    font-size: 16px; font-weight: 600; color: #fff; cursor: pointer;
+    background: var(--accent); border: 0; border-radius: 10px;
+  }
+  .primary[disabled] { opacity: .6; }
+  .total { display: flex; justify-content: space-between; margin-top: 14px;
+           font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .msg {
+    white-space: pre-wrap; font-size: 13.5px; line-height: 1.5; margin-top: 12px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px;
+  }
 
   .signin { max-width: 380px; margin: 12vh auto 0; padding: 0 20px; }
   .signin h2 { margin: 0 0 4px; font-size: 22px; }
@@ -168,7 +201,8 @@
     <h1 id="title">Ledgers</h1>
     <div class="tabs">
       <button class="tab on" id="tabLedgers">Ledgers</button>
-      <button class="tab" id="tabPL">Profit &amp; Loss</button>
+      <button class="tab" id="tabOrders">Orders</button>
+      <button class="tab" id="tabPL">P&amp;L</button>
     </div>
     <input type="search" id="search" placeholder="Search a party" autocomplete="off">
     <div class="chips" id="periods"></div>
@@ -323,8 +357,9 @@
   function showProfitLoss() {
     VIEW = 'pl';
     current = null;
-    $('tabPL').classList.add('on'); $('tabLedgers').classList.remove('on');
+    setTab('tabPL');
     $('search').hidden = true; $('back').hidden = true;
+    $('periods').hidden = false;
     $('title').textContent = 'Profit & Loss';
     $('main').innerHTML = '<div class="empty">Loading…</div>';
 
@@ -373,10 +408,208 @@
   function showLedgers() {
     VIEW = 'ledgers';
     current = null;
-    $('tabLedgers').classList.add('on'); $('tabPL').classList.remove('on');
+    setTab('tabLedgers');
     $('search').hidden = false; $('back').hidden = true;
+    $('periods').hidden = false;
     $('title').textContent = 'Ledgers';
     reload();
+  }
+
+  function setTab(which) {
+    ['tabLedgers', 'tabOrders', 'tabPL'].forEach(function (id) {
+      $(id).classList.toggle('on', id === which);
+    });
+  }
+
+  // --- orders ---------------------------------------------------------------
+
+  var lists = null;      // items and pack types, fetched once
+  var draft = [];        // the lines being typed, before the order is saved
+
+  /**
+   * Placing an order writes the entry into Jolly straight away, unticked. It
+   * reaches the ledger only when somebody confirms delivery there — so this
+   * screen can be used freely without anything landing in the books.
+   */
+  function showOrders() {
+    VIEW = 'orders';
+    current = null;
+    setTab('tabOrders');
+    $('search').hidden = true; $('back').hidden = true;
+    $('periods').hidden = true; $('range').hidden = true;
+    $('title').textContent = 'New order';
+    $('main').innerHTML = '<div class="empty">Loading…</div>';
+
+    if (lists) { drawOrderForm(); return; }
+    api('lists', { token: TOKEN })
+      .then(function (r) { lists = r.data; drawOrderForm(); })
+      .catch(fail);
+  }
+
+  function options(values, chosen) {
+    return values.map(function (v) {
+      return '<option value="' + esc(v) + '"' + (v === chosen ? ' selected' : '') + '>' +
+             esc(v) + '</option>';
+    }).join('');
+  }
+
+  function drawOrderForm(note) {
+    if (!draft.length) draft = [blankLine()];
+
+    var html =
+      (note ? '<div class="msg">' + esc(note) + '</div>' : '') +
+      '<div class="field"><label>Party</label>' +
+        '<input id="oparty" list="partyList" autocomplete="off" ' +
+               'placeholder="Start typing a name" value="' + esc(draftParty) + '"></div>' +
+      '<datalist id="partyList">' +
+        parties.map(function (p) { return '<option value="' + esc(p.name) + '">'; }).join('') +
+      '</datalist>' +
+      '<div class="field"><label>Date</label><input type="date" id="odate" value="' +
+        todayISO() + '"></div>';
+
+    draft.forEach(function (l, i) {
+      html +=
+        '<div class="card" data-i="' + i + '">' +
+          '<div class="head"><b>Line ' + (i + 1) + '</b>' +
+            (draft.length > 1 ? '<button class="link drop" data-i="' + i + '">Remove</button>' : '') +
+          '</div>' +
+          '<div class="field"><label>Item</label>' +
+            '<select class="f" data-k="item" data-i="' + i + '">' +
+              '<option value=""></option>' + options(lists.items, l.item) +
+            '</select></div>' +
+          '<div class="g3">' +
+            '<div class="field"><label>Pack</label>' +
+              '<select class="f" data-k="pack" data-i="' + i + '">' +
+                options(lists.packs, l.pack) +
+              '</select></div>' +
+            '<div class="field"><label>Size</label>' +
+              '<input class="f" data-k="packSize" data-i="' + i + '" type="number" ' +
+                     'inputmode="decimal" value="' + (l.packSize || '') + '"></div>' +
+            '<div class="field"><label>Number</label>' +
+              '<input class="f" data-k="packs" data-i="' + i + '" type="number" ' +
+                     'inputmode="decimal" value="' + (l.packs || '') + '"></div>' +
+          '</div>' +
+          '<div class="g2">' +
+            '<div class="field"><label>Rate</label>' +
+              '<input class="f" data-k="rate" data-i="' + i + '" type="number" ' +
+                     'inputmode="decimal" value="' + (l.rate || '') + '"></div>' +
+            '<div class="field"><label>Comes to</label>' +
+              '<input value="' + money(lineTotal(l)) + '" disabled></div>' +
+          '</div>' +
+          '<label class="tick"><input class="f" data-k="gst" data-i="' + i + '" ' +
+                 'type="checkbox"' + (l.gst ? ' checked' : '') + '> GST 18%</label>' +
+        '</div>';
+    });
+
+    html +=
+      '<button class="more" id="addline">Add another line</button>' +
+      '<div class="total"><span>Total</span><span>' + money(draftTotal()) + '</span></div>' +
+      '<button class="primary" id="place">Place order</button>' +
+      '<p class="note" style="margin-top:10px">Saving writes the entry into Jolly, ' +
+      'not yet delivered. It reaches the ledger when you confirm delivery there.</p>';
+
+    $('main').innerHTML = html;
+    wireOrderForm();
+  }
+
+  function blankLine() {
+    return { item: '', pack: (lists && lists.packs[0]) || '', packSize: '', packs: '', rate: '', gst: false };
+  }
+
+  var draftParty = '';
+
+  /** Goods plus exact 18%, with only the total rounded — the same rule the sheet uses. */
+  function lineTotal(l) {
+    var goods = (Number(l.packSize) || 0) * (Number(l.packs) || 0) * (Number(l.rate) || 0);
+    var tax = l.gst ? goods * 0.18 : 0;
+    return Math.round(goods + tax);
+  }
+
+  function draftTotal() {
+    return draft.reduce(function (sum, l) { return sum + lineTotal(l); }, 0);
+  }
+
+  function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+
+  function wireOrderForm() {
+    $('oparty').oninput = function () { draftParty = this.value; };
+
+    Array.prototype.forEach.call(document.querySelectorAll('.f'), function (el) {
+      var apply = function () {
+        var i = +el.dataset.i, k = el.dataset.k;
+        draft[i][k] = (el.type === 'checkbox') ? el.checked : el.value;
+        // Redraw only for the things that change a figure, so typing is not
+        // interrupted mid-number.
+        if (k === 'gst') drawOrderForm();
+        else refreshTotals();
+      };
+      el.onchange = apply;
+      if (el.tagName === 'INPUT' && el.type !== 'checkbox') el.oninput = apply;
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('.drop'), function (el) {
+      el.onclick = function () { draft.splice(+el.dataset.i, 1); drawOrderForm(); };
+    });
+
+    $('addline').onclick = function () { draft.push(blankLine()); drawOrderForm(); };
+    $('place').onclick = placeOrder;
+  }
+
+  /** Updates the two derived figures in place, without rebuilding the form. */
+  function refreshTotals() {
+    Array.prototype.forEach.call(document.querySelectorAll('.card'), function (card) {
+      var box = card.querySelector('input[disabled]');
+      if (box) box.value = money(lineTotal(draft[+card.dataset.i]));
+    });
+    var t = document.querySelector('.total span:last-child');
+    if (t) t.textContent = money(draftTotal());
+  }
+
+  function placeOrder() {
+    var party = ($('oparty').value || '').trim();
+    if (!party) { alert('Name the party this order is for.'); return; }
+
+    var lines = draft.filter(function (l) {
+      return l.item && Number(l.packSize) > 0 && Number(l.packs) > 0 && Number(l.rate) > 0;
+    });
+    if (!lines.length) { alert('A line needs an item, a pack size, a number of packs and a rate.'); return; }
+
+    $('place').disabled = true;
+    $('place').textContent = 'Saving…';
+
+    api('orderNew', { token: TOKEN, date: $('odate').value, party: party, lines: lines })
+      .then(function (r) { showPlaced(r.data); })
+      .catch(function (e) {
+        $('place').disabled = false;
+        $('place').textContent = 'Place order';
+        alert(e.message);
+      });
+  }
+
+  /** The order is saved. Now the only thing left is to send it. */
+  function showPlaced(order) {
+    draft = [];
+    draftParty = '';
+    $('title').textContent = 'Order ' + order.orderNo;
+
+    $('main').innerHTML =
+      '<div class="summary"><div><div class="note">Order ' + order.orderNo + '</div>' +
+        '<div class="big">' + money(order.total) + '</div></div>' +
+        '<div style="text-align:right"><div class="note">' + esc(order.party) + '</div>' +
+        '<div class="note">' + esc(order.dateText) + '</div></div></div>' +
+      '<div class="msg">' + esc(order.message) + '</div>' +
+      '<button class="share" id="send" style="width:100%;margin-top:12px;padding:12px;' +
+        'font-size:15px;border-radius:10px">Send on WhatsApp</button>' +
+      '<button class="more" id="another">New order</button>' +
+      '<p class="note" style="margin-top:10px">The entry is in Jolly, not yet delivered.</p>';
+
+    $('send').onclick = function () {
+      window.open('https://wa.me/?text=' + encodeURIComponent(order.message), '_blank');
+    };
+    $('another').onclick = showOrders;
   }
 
   // --- the ledgers ----------------------------------------------------------
@@ -536,6 +769,7 @@
   $('back').onclick = backToList;
   $('out').onclick = signOut;
   $('tabLedgers').onclick = showLedgers;
+  $('tabOrders').onclick = showOrders;
   $('tabPL').onclick = showProfitLoss;
   $('search').oninput = function () { showList(this.value); };
 
