@@ -198,7 +198,7 @@
       <!-- Which build is actually loaded. A phone can serve a cached copy for
            hours, and without this there is no way to tell that apart from a
            fault in the code — which cost an afternoon once. -->
-      <span class="note" id="build">build 5</span>
+      <span class="note" id="build">build 6</span>
       <button class="link" id="out">Sign out</button>
     </div>
     <h1 id="title">Ledgers</h1>
@@ -350,8 +350,12 @@
     if (VIEW === 'pl') { showProfitLoss(); return; }
     if (current) { openLedger(current); return; }
     $('main').innerHTML = '<div class="empty">Loading…</div>';
+    var ticket = takeTicket();
     api('parties', { token: TOKEN, from: PERIOD.from, to: PERIOD.to })
-      .then(function (r) { parties = r.data; showList($('search').value); })
+      .then(function (r) {
+        parties = r.data;                      // the figures are kept either way
+        if (stillWanted(ticket)) showList($('search').value);
+      })
       .catch(fail);
   }
 
@@ -366,7 +370,9 @@
     $('title').textContent = 'Profit & Loss';
     $('main').innerHTML = '<div class="empty">Loading…</div>';
 
+    var ticket = takeTicket();
     api('pnl', { token: TOKEN, from: PERIOD.from, to: PERIOD.to }).then(function (r) {
+      if (!stillWanted(ticket)) return;
       var d = r.data;
       var html = '<div class="pl">' +
         '<div class="l head"><span>Income</span><span></span></div>' +
@@ -418,6 +424,25 @@
     reload();
   }
 
+  /**
+   * Which screen the app is showing, as a number that changes every time you
+   * switch.
+   *
+   * THE BUG THIS EXISTS FOR. The sheet takes about twelve seconds to answer.
+   * Tap a party, then tap Orders before it replies, and the order form appears
+   * at once — and then the ledger's answer arrives and paints itself over the
+   * top, restoring the party's title and back button. The tab still says Orders
+   * because Orders really did open. It looks exactly like the app ignoring the
+   * tap, and it happens every time the wait is long, which is always.
+   *
+   * So every screen takes a ticket before it asks for anything, and throws the
+   * answer away if the ticket is no longer current. A late reply is not wrong,
+   * it is simply no longer wanted.
+   */
+  var viewSeq = 0;
+  function takeTicket() { return ++viewSeq; }
+  function stillWanted(ticket) { return ticket === viewSeq; }
+
   function setTab(which) {
     ['tabLedgers', 'tabOrders', 'tabPL'].forEach(function (id) {
       $(id).classList.toggle('on', id === which);
@@ -443,9 +468,13 @@
     $('title').textContent = 'New order';
     $('main').innerHTML = '<div class="empty">Loading…</div>';
 
+    var ticket = takeTicket();
     if (lists) { drawOrderForm(); return; }
     api('lists', { token: TOKEN })
-      .then(function (r) { lists = r.data; drawOrderForm(); })
+      .then(function (r) {
+        lists = r.data;
+        if (stillWanted(ticket)) drawOrderForm();
+      })
       .catch(fail);
   }
 
@@ -746,8 +775,12 @@
     $('periods').hidden = false;
     $('title').textContent = name;
 
+    var ticket = takeTicket();
     api('ledger', { token: TOKEN, party: name, showAll: !!showAll,
                     from: PERIOD.from, to: PERIOD.to }).then(function (r) {
+      // Twelve seconds is long enough to have moved on. If you have, this
+      // answer is stale and must not repaint the screen you are looking at.
+      if (!stillWanted(ticket)) return;
       var d = r.data;
       lastLedger = d;
       var first = d.hidden
