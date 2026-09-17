@@ -198,7 +198,7 @@
       <!-- Which build is actually loaded. A phone can serve a cached copy for
            hours, and without this there is no way to tell that apart from a
            fault in the code — which cost an afternoon once. -->
-      <span class="note" id="build">build 6</span>
+      <span class="note" id="build">build 7</span>
       <button class="link" id="out">Sign out</button>
     </div>
     <h1 id="title">Ledgers</h1>
@@ -515,10 +515,13 @@
               '<select class="f" data-k="pack" data-i="' + i + '">' +
                 options(lists.packs, l.pack) +
               '</select></div>' +
-            '<div class="field"><label>Size</label>' +
-              '<input class="f" data-k="packSize" data-i="' + i + '" type="number" ' +
-                     'inputmode="decimal" value="' + (l.packSize || '') + '"></div>' +
-            '<div class="field"><label>Number</label>' +
+            '<div class="field"><label>Qty</label>' +
+              '<input class="f" data-k="qty" data-i="' + i + '" type="number" ' +
+                     'inputmode="decimal" value="' + (l.qty || '') + '"></div>' +
+            // Optional: it never touches the price. It is here so a load can be
+            // checked in the unit it is actually counted in — you count cans,
+            // you bill kilos.
+            '<div class="field"><label>Number <span class="note">opt.</span></label>' +
               '<input class="f" data-k="packs" data-i="' + i + '" type="number" ' +
                      'inputmode="decimal" value="' + (l.packs || '') + '"></div>' +
           '</div>' +
@@ -546,14 +549,14 @@
   }
 
   function blankLine() {
-    return { item: '', pack: (lists && lists.packs[0]) || '', packSize: '', packs: '', rate: '', gst: false };
+    return { item: '', pack: (lists && lists.packs[0]) || '', qty: '', packs: '', rate: '', gst: false };
   }
 
   var draftParty = '';
 
   /** Goods plus exact 18%, with only the total rounded — the same rule the sheet uses. */
   function lineTotal(l) {
-    var goods = (Number(l.packSize) || 0) * (Number(l.packs) || 0) * (Number(l.rate) || 0);
+    var goods = (Number(l.qty) || 0) * (Number(l.rate) || 0);
     var tax = l.gst ? goods * 0.18 : 0;
     return Math.round(goods + tax);
   }
@@ -683,9 +686,9 @@
     if (!party) { alert('Name the party this order is for.'); return; }
 
     var lines = draft.filter(function (l) {
-      return l.item && Number(l.packSize) > 0 && Number(l.packs) > 0 && Number(l.rate) > 0;
+      return l.item && Number(l.qty) > 0 && Number(l.rate) > 0;
     });
-    if (!lines.length) { alert('A line needs an item, a pack size, a number of packs and a rate.'); return; }
+    if (!lines.length) { alert('A line needs an item, a quantity and a rate.'); return; }
 
     $('place').disabled = true;
     $('place').textContent = 'Saving…';
