@@ -198,7 +198,7 @@
       <!-- Which build is actually loaded. A phone can serve a cached copy for
            hours, and without this there is no way to tell that apart from a
            fault in the code — which cost an afternoon once. -->
-      <span class="note" id="build">build 7</span>
+      <span class="note" id="build">build 8</span>
       <button class="link" id="out">Sign out</button>
     </div>
     <h1 id="title">Ledgers</h1>
@@ -617,8 +617,16 @@
       return;
     }
 
-    if (parties.some(function (p) { return sameName(p.name, typed); })) {
-      note.textContent = ''; note.style.color = '';
+    var known = null;
+    parties.forEach(function (p) { if (sameName(p.name, typed)) known = p; });
+    if (known) {
+      note.style.color = '';
+      // Say where a filled-in rate came from. A figure that appears by itself
+      // and says nothing is one nobody checks.
+      note.textContent = known.rate
+        ? 'Rate ' + money(known.rate) + (known.gst ? ' with GST' : ' without GST') +
+          ' from this party — change it on the line if today is different.'
+        : '';
       return;
     }
 
@@ -646,8 +654,35 @@
     }
   }
 
+  /**
+   * Take the rate and GST recorded against the party, for lines that have not
+   * been priced yet.
+   *
+   * It never overwrites a rate you have typed — the party's figure is a starting
+   * point, not a ruling — and the note says where it came from, so a rate that
+   * is out of date is visible rather than silently believed.
+   */
+  function applyPartyTerms() {
+    var typed = ($('oparty').value || '').trim();
+    var p = null;
+    parties.forEach(function (q) { if (sameName(q.name, typed)) p = q; });
+    if (!p || !p.rate) return false;
+
+    var touched = false;
+    draft.forEach(function (l) {
+      if (!Number(l.rate)) { l.rate = p.rate; l.gst = !!p.gst; touched = true; }
+    });
+    return touched ? p : false;
+  }
+
   function wireOrderForm() {
     $('oparty').oninput = function () { draftParty = this.value; judgeParty(); };
+    $('oparty').onchange = function () {
+      draftParty = this.value;
+      var from = applyPartyTerms();
+      if (from) drawOrderForm();
+      else judgeParty();
+    };
     judgeParty();
 
     Array.prototype.forEach.call(document.querySelectorAll('.f'), function (el) {
