@@ -198,7 +198,7 @@
       <!-- Which build is actually loaded. A phone can serve a cached copy for
            hours, and without this there is no way to tell that apart from a
            fault in the code — which cost an afternoon once. -->
-      <span class="note" id="build">build 8</span>
+      <span class="note" id="build">build 9</span>
       <button class="link" id="out">Sign out</button>
     </div>
     <h1 id="title">Ledgers</h1>
@@ -541,6 +541,7 @@
       '<button class="more" id="addline">Add another line</button>' +
       '<div class="total"><span>Total</span><span>' + money(draftTotal()) + '</span></div>' +
       '<button class="primary" id="place">Place order</button>' +
+      '<button class="more" id="batch">Orders waiting to send</button>' +
       '<p class="note" style="margin-top:10px">Saving writes the entry into Jolly, ' +
       'not yet delivered. It reaches the ledger when you confirm delivery there.</p>';
 
@@ -704,6 +705,7 @@
 
     $('addline').onclick = function () { draft.push(blankLine()); drawOrderForm(); };
     $('place').onclick = placeOrder;
+    if ($('batch')) $('batch').onclick = function () { showBatch(); };
   }
 
   /** Updates the two derived figures in place, without rebuilding the form. */
@@ -737,25 +739,129 @@
       });
   }
 
-  /** The order is saved. Now the only thing left is to send it. */
+  /**
+   * The order is saved. It now joins the batch waiting to be sent.
+   *
+   * Orders are placed one shop at a time — one order, one party, one chalan,
+   * because that is what a delivery is. They LEAVE together, as the single list
+   * the plant has always been sent, rather than as six separate messages.
+   */
   function showPlaced(order) {
     draft = [];
     draftParty = '';
-    $('title').textContent = 'Order ' + order.orderNo;
+    showBatch('Order ' + order.orderNo + ' saved for ' + order.party + '.');
+  }
 
-    $('main').innerHTML =
-      '<div class="summary"><div><div class="note">Order ' + order.orderNo + '</div>' +
-        '<div class="big">' + money(order.total) + '</div></div>' +
-        '<div style="text-align:right"><div class="note">' + esc(order.party) + '</div>' +
-        '<div class="note">' + esc(order.dateText) + '</div></div></div>' +
-      '<div class="msg">' + esc(order.message) + '</div>' +
-      '<button class="share" id="send" style="width:100%;margin-top:12px;padding:12px;' +
+  function showBatch(note) {
+    VIEW = 'orders';
+    current = null;
+    setTab('tabOrders');
+    $('search').hidden = true; $('back').hidden = true;
+    $('periods').hidden = true; $('range').hidden = true;
+    $('title').textContent = 'Orders to send';
+    $('main').innerHTML = '<div class="empty">Loading…</div>';
+
+    var ticket = takeTicket();
+    api('ordersPending', { token: TOKEN }).then(function (r) {
+      if (!stillWanted(ticket)) return;
+      drawBatch(r.data, note);
+    }).catch(fail);
+  }
+
+  function drawBatch(orders, note) {
+    if (!orders.length) {
+      $('main').innerHTML =
+        (note ? '<div class="msg">' + esc(note) + '</div>' : '') +
+        '<div class="empty">Nothing waiting to be sent.</div>' +
+        '<button class="primary" id="another">New order</button>';
+      $('another').onclick = showOrders;
+      return;
+    }
+
+    var total = 0;
+    var html = (note ? '<div class="msg">' + esc(note) + '</div>' : '');
+
+    html += orders.map(function (o) {
+      total += o.total;
+      return '<div class="card">' +
+        '<label class="tick" style="margin:0"><input type="checkbox" class="pick" ' +
+               'data-no="' + esc(o.orderNo) + '" checked> ' +
+          '<b>' + esc(o.party) + '</b>&nbsp;<span class="note">' + esc(o.orderNo) + '</span></label>' +
+        o.lines.map(function (l) {
+          return '<div class="note" style="margin-top:6px">' +
+                 esc(l.item) + ' · ' + trimNum(l.qty) + ' × ' + trimNum(l.rate) +
+                 (l.packs ? ' (' + trimNum(l.packs) + (l.pack ? ' ' + esc(l.pack) : '') + ')' : '') +
+                 (l.gst ? ' + GST' : '') + '</div>';
+        }).join('') +
+        '<div style="text-align:right;font-weight:600;margin-top:6px">' + money(o.total) + '</div>' +
+      '</div>';
+    }).join('');
+
+    html +=
+      '<div class="total"><span>Total</span><span id="btotal">' + money(total) + '</span></div>' +
+      '<button class="share" id="sendbatch" style="width:100%;margin-top:12px;padding:12px;' +
         'font-size:15px;border-radius:10px">Send on WhatsApp</button>' +
-      '<button class="more" id="another">New order</button>' +
-      '<p class="note" style="margin-top:10px">The entry is in Jolly, not yet delivered.</p>';
+      '<button class="more" id="another">Add another order</button>' +
+      '<p class="note" style="margin-top:10px">Untick any that should wait. ' +
+      'The entries are already in Jolly, not yet delivered.</p>';
 
-    $('send').onclick = function () {
-      window.open('https://wa.me/?text=' + encodeURIComponent(order.message), '_blank');
+    $('main').innerHTML = html;
+
+    var retotal = function () {
+      var sum = 0;
+      Array.prototype.forEach.call(document.querySelectorAll('.pick'), function (el, i) {
+        if (el.checked) sum += orders[i].total;
+      });
+      $('btotal').textContent = money(sum);
+    };
+    Array.prototype.forEach.call(document.querySelectorAll('.pick'), function (el) {
+      el.onchange = retotal;
+    });
+
+    $('another').onclick = showOrders;
+    $('sendbatch').onclick = function () { sendBatch(); };
+  }
+
+  function trimNum(n) {
+    return String(Math.round((Number(n) || 0) * 1000) / 1000);
+  }
+
+  function sendBatch() {
+    var nos = [];
+    Array.prototype.forEach.call(document.querySelectorAll('.pick'), function (el) {
+      if (el.checked) nos.push(el.dataset.no);
+    });
+    if (!nos.length) { alert('Tick at least one order to send.'); return; }
+
+    $('sendbatch').disabled = true;
+    $('sendbatch').textContent = 'Preparing…';
+
+    api('ordersSend', { token: TOKEN, orderNos: nos }).then(function (r) {
+      // Opened first, marked sent on the server already — so if WhatsApp is
+      // dismissed the orders are not offered again. The message is still on
+      // screen to copy if that happens.
+      window.open('https://wa.me/?text=' + encodeURIComponent(r.data.message), '_blank');
+      showSent(r.data);
+    }).catch(function (e) {
+      $('sendbatch').disabled = false;
+      $('sendbatch').textContent = 'Send on WhatsApp';
+      alert(e.message);
+    });
+  }
+
+  function showSent(sent) {
+    $('title').textContent = 'Sent';
+    $('main').innerHTML =
+      '<div class="msg">' + esc(sent.message) + '</div>' +
+      '<button class="share" id="again" style="width:100%;margin-top:12px;padding:12px;' +
+        'font-size:15px;border-radius:10px">Open WhatsApp again</button>' +
+      '<button class="more" id="another">New order</button>' +
+      '<p class="note" style="margin-top:10px">' + sent.count +
+      ' order(s) marked sent, ' + money(sent.total) + ' in all. ' +
+      'They will not be offered again.</p>';
+
+    $('again').onclick = function () {
+      window.open('https://wa.me/?text=' + encodeURIComponent(sent.message), '_blank');
     };
     $('another').onclick = showOrders;
   }
