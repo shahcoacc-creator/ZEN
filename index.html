@@ -198,7 +198,7 @@
       <!-- Which build is actually loaded. A phone can serve a cached copy for
            hours, and without this there is no way to tell that apart from a
            fault in the code — which cost an afternoon once. -->
-      <span class="note" id="build" style="cursor:pointer">build 11</span>
+      <span class="note" id="build" style="cursor:pointer">build 12</span>
       <button class="link" id="out">Sign out</button>
     </div>
     <h1 id="title">Ledgers</h1>
@@ -520,7 +520,13 @@
         parties.map(function (p) { return '<option value="' + esc(p.name) + '">'; }).join('') +
       '</datalist>' +
       '<div class="field"><label>Date</label><input type="date" id="odate" value="' +
-        todayISO() + '"></div>';
+        todayISO() + '"></div>' +
+      // One note for the order, not one per line. It rides to the Narration
+      // column of every entry the order makes, and into the message, so the
+      // plant reads the same instruction the ledger keeps.
+      '<div class="field"><label>Narration <span class="note">opt.</span></label>' +
+        '<input id="onote" autocomplete="off" placeholder="Anything the plant should know" ' +
+               'value="' + esc(draftNote) + '"></div>';
 
     draft.forEach(function (l, i) {
       html +=
@@ -576,6 +582,7 @@
   }
 
   var draftParty = '';
+  var draftNote = '';
 
   /** Goods plus exact 18%, with only the total rounded — the same rule the sheet uses. */
   function lineTotal(l) {
@@ -700,6 +707,7 @@
 
   function wireOrderForm() {
     $('oparty').oninput = function () { draftParty = this.value; judgeParty(); };
+    if ($('onote')) $('onote').oninput = function () { draftNote = this.value; };
     $('oparty').onchange = function () {
       draftParty = this.value;
       var from = applyPartyTerms();
@@ -752,7 +760,8 @@
     $('place').disabled = true;
     $('place').textContent = 'Saving…';
 
-    api('orderNew', { token: TOKEN, date: $('odate').value, party: party, lines: lines })
+    api('orderNew', { token: TOKEN, date: $('odate').value, party: party,
+                      notes: ($('onote') ? $('onote').value : ''), lines: lines })
       .then(function (r) { showPlaced(r.data); })
       .catch(function (e) {
         $('place').disabled = false;
@@ -771,6 +780,7 @@
   function showPlaced(order) {
     draft = [];
     draftParty = '';
+    draftNote = '';
     // A changed rate is said out loud. It has just become the rate offered next
     // time, and that is worth knowing at the moment it happens.
     showBatch('Order ' + order.orderNo + ' saved for ' + order.party + '.' +
