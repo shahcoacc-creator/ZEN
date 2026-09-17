@@ -198,7 +198,7 @@
       <!-- Which build is actually loaded. A phone can serve a cached copy for
            hours, and without this there is no way to tell that apart from a
            fault in the code — which cost an afternoon once. -->
-      <span class="note" id="build">build 10</span>
+      <span class="note" id="build" style="cursor:pointer">build 11</span>
       <button class="link" id="out">Sign out</button>
     </div>
     <h1 id="title">Ledgers</h1>
@@ -362,6 +362,7 @@
   // --- profit & loss --------------------------------------------------------
 
   function showProfitLoss() {
+    mark('showProfitLoss');
     VIEW = 'pl';
     current = null;
     setTab('tabPL');
@@ -415,6 +416,7 @@
   }
 
   function showLedgers() {
+    mark('showLedgers');
     VIEW = 'ledgers';
     current = null;
     setTab('tabLedgers');
@@ -443,6 +445,25 @@
   function takeTicket() { return ++viewSeq; }
   function stillWanted(ticket) { return ticket === viewSeq; }
 
+  /**
+   * A short trail of which screen opened when, shown by tapping the build stamp.
+   *
+   * Put here because a fault was reported three times that could not be
+   * reproduced: the screen jumped to a ledger and neither of us could say which
+   * tap did it. A screenshot shows the result; this shows the cause.
+   */
+  var trail = [];
+  function mark(what) {
+    trail.push(new Date().toLocaleTimeString() + '  ' + what);
+    if (trail.length > 14) trail.shift();
+  }
+  function showTrail() {
+    $('main').innerHTML =
+      '<div class="msg">' + esc(trail.join('\n') || 'Nothing yet.') + '</div>' +
+      '<button class="more" id="backfromtrail">Back</button>';
+    $('backfromtrail').onclick = showLedgers;
+  }
+
   function setTab(which) {
     ['tabLedgers', 'tabOrders', 'tabPL'].forEach(function (id) {
       $(id).classList.toggle('on', id === which);
@@ -460,6 +481,7 @@
    * screen can be used freely without anything landing in the books.
    */
   function showOrders() {
+    mark('showOrders');
     VIEW = 'orders';
     current = null;
     setTab('tabOrders');
@@ -756,6 +778,7 @@
   }
 
   function showBatch(note) {
+    mark('showBatch');
     VIEW = 'orders';
     current = null;
     setTab('tabOrders');
@@ -884,6 +907,7 @@
   }
 
   function showList(filter) {
+    mark('showList(' + (filter || '') + ')');
     // The party list is the Ledgers tab, whatever called this. Typing in the
     // search box reaches here directly, and used to leave another tab underlined
     // over a screenful of ledgers.
@@ -910,6 +934,7 @@
   }
 
   function openLedger(name, showAll) {
+    mark('openLedger(' + name + ')');
     current = name;
     VIEW = 'ledgers';
     // A ledger belongs to the Ledgers tab. Without this the underline could be
@@ -1030,6 +1055,7 @@
   }
 
   function backToList() {
+    mark('backToList');
     current = null;
     $('search').hidden = false; $('back').hidden = true;
     $('title').textContent = 'Ledgers';
@@ -1041,6 +1067,7 @@
   $('u').onkeydown = function (e) { if (e.key === 'Enter') $('p').focus(); };
   $('back').onclick = backToList;
   $('out').onclick = signOut;
+  $('build').onclick = showTrail;
   $('tabLedgers').onclick = showLedgers;
   $('tabOrders').onclick = showOrders;
   $('tabPL').onclick = showProfitLoss;
