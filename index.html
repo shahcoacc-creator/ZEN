@@ -460,7 +460,8 @@
       (note ? '<div class="msg">' + esc(note) + '</div>' : '') +
       '<div class="field"><label>Party</label>' +
         '<input id="oparty" list="partyList" autocomplete="off" ' +
-               'placeholder="Start typing a name" value="' + esc(draftParty) + '"></div>' +
+               'placeholder="Start typing a name" value="' + esc(draftParty) + '">' +
+        '<p class="note" id="partynote" style="margin:6px 0 0"></p></div>' +
       '<datalist id="partyList">' +
         parties.map(function (p) { return '<option value="' + esc(p.name) + '">'; }).join('') +
       '</datalist>' +
@@ -534,8 +535,77 @@
     return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
   }
 
+  /**
+   * A party typed here that is not on the list is opened at nil when the entry
+   * posts — so a new customer can be served without leaving the app.
+   *
+   * The catch is that the same thing happens to a misspelling, and a ledger
+   * split in two is found months later. The posting run refuses a name too close
+   * to one already in use, but that is at the end of the day; saying so HERE,
+   * while the name is still being typed, is the difference between a correction
+   * and an investigation.
+   */
+  function sameName(a, b) {
+    return a.replace(/\s+/g, ' ').trim().toLowerCase() ===
+           b.replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  /** How alike two names are: 1 is identical. The sheet uses the same measure. */
+  function alike(a, b) {
+    a = a.replace(/\s+/g, ' ').trim().toLowerCase();
+    b = b.replace(/\s+/g, ' ').trim().toLowerCase();
+    var long = a.length >= b.length ? a : b, short = a.length >= b.length ? b : a;
+    if (!long.length) return 1;
+    var prev = [], i, k;
+    for (k = 0; k <= short.length; k++) prev[k] = k;
+    for (i = 1; i <= long.length; i++) {
+      var cur = [i];
+      for (k = 1; k <= short.length; k++) {
+        cur[k] = Math.min(prev[k] + 1, cur[k - 1] + 1,
+                          prev[k - 1] + (long.charAt(i - 1) === short.charAt(k - 1) ? 0 : 1));
+      }
+      prev = cur;
+    }
+    return (long.length - prev[short.length]) / long.length;
+  }
+
+  function judgeParty() {
+    var typed = ($('oparty').value || '').trim();
+    var note = $('partynote');
+    if (!typed) { note.textContent = ''; note.style.color = ''; return; }
+
+    if (parties.some(function (p) { return sameName(p.name, typed); })) {
+      note.textContent = ''; note.style.color = '';
+      return;
+    }
+
+    var best = null, score = 0;
+    parties.forEach(function (p) {
+      var s = alike(p.name, typed);
+      if (s > score) { score = s; best = p.name; }
+    });
+
+    // 0.80. The typos measured between 0.818 and 0.846, and the closest pair of
+    // genuinely different shops — Eden Bakery Bhiwandi against Dharavi — sits at
+    // 0.750, so the line goes between them with room to spare.
+    //
+    // It does also catch "Aqsa Bakery" against "Aksha Bakery", which are two real
+    // shops. That costs one confirmation the first time such a name is added,
+    // and only then; both are on the list afterwards and match exactly.
+    if (score >= 0.80) {
+      note.style.color = 'var(--dr)';
+      note.textContent = 'Looks like “' + best + '”. If it really is a different shop, ' +
+                         'say so — otherwise this entry will be held back.';
+    } else {
+      note.style.color = 'var(--cr)';
+      note.textContent = 'New party — it will be opened at nil when this posts. ' +
+                         'Use the New Parties tab in Jolly if it starts with a balance.';
+    }
+  }
+
   function wireOrderForm() {
-    $('oparty').oninput = function () { draftParty = this.value; };
+    $('oparty').oninput = function () { draftParty = this.value; judgeParty(); };
+    judgeParty();
 
     Array.prototype.forEach.call(document.querySelectorAll('.f'), function (el) {
       var apply = function () {
