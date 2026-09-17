@@ -195,7 +195,10 @@
   <header>
     <div class="bar">
       <button class="link" id="back" hidden>‹ All parties</button>
-      <span></span>
+      <!-- Which build is actually loaded. A phone can serve a cached copy for
+           hours, and without this there is no way to tell that apart from a
+           fault in the code — which cost an afternoon once. -->
+      <span class="note" id="build">build 4</span>
       <button class="link" id="out">Sign out</button>
     </div>
     <h1 id="title">Ledgers</h1>
