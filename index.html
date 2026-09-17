@@ -198,7 +198,7 @@
       <!-- Which build is actually loaded. A phone can serve a cached copy for
            hours, and without this there is no way to tell that apart from a
            fault in the code — which cost an afternoon once. -->
-      <span class="note" id="build">build 9</span>
+      <span class="note" id="build">build 10</span>
       <button class="link" id="out">Sign out</button>
     </div>
     <h1 id="title">Ledgers</h1>
@@ -749,7 +749,10 @@
   function showPlaced(order) {
     draft = [];
     draftParty = '';
-    showBatch('Order ' + order.orderNo + ' saved for ' + order.party + '.');
+    // A changed rate is said out loud. It has just become the rate offered next
+    // time, and that is worth knowing at the moment it happens.
+    showBatch('Order ' + order.orderNo + ' saved for ' + order.party + '.' +
+              (order.rateChanged ? '\n' + order.rateChanged.text : ''));
   }
 
   function showBatch(note) {
