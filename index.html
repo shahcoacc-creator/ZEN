@@ -198,7 +198,7 @@
       <!-- Which build is actually loaded. A phone can serve a cached copy for
            hours, and without this there is no way to tell that apart from a
            fault in the code — which cost an afternoon once. -->
-      <span class="note" id="build">build 4</span>
+      <span class="note" id="build">build 5</span>
       <button class="link" id="out">Sign out</button>
     </div>
     <h1 id="title">Ledgers</h1>
@@ -708,6 +708,11 @@
   }
 
   function showList(filter) {
+    // The party list is the Ledgers tab, whatever called this. Typing in the
+    // search box reaches here directly, and used to leave another tab underlined
+    // over a screenful of ledgers.
+    VIEW = 'ledgers';
+    setTab('tabLedgers');
     var q = (filter || '').trim().toLowerCase();
     var shown = parties.filter(function (p) { return p.name.toLowerCase().indexOf(q) !== -1; });
 
@@ -730,8 +735,15 @@
 
   function openLedger(name, showAll) {
     current = name;
+    VIEW = 'ledgers';
+    // A ledger belongs to the Ledgers tab. Without this the underline could be
+    // left over from an earlier visit to Orders, so the tab said one thing and
+    // the screen said another — which is indistinguishable from the app having
+    // ignored the tap.
+    setTab('tabLedgers');
     $('main').innerHTML = '<div class="empty">Loading…</div>';
     $('search').hidden = true; $('back').hidden = false;
+    $('periods').hidden = false;
     $('title').textContent = name;
 
     api('ledger', { token: TOKEN, party: name, showAll: !!showAll,
