@@ -198,7 +198,7 @@
       <!-- Which build is actually loaded. A phone can serve a cached copy for
            hours, and without this there is no way to tell that apart from a
            fault in the code — which cost an afternoon once. -->
-      <span class="note" id="build" style="cursor:pointer">build 12</span>
+      <span class="note" id="build" style="cursor:pointer">build 14</span>
       <button class="link" id="out">Sign out</button>
     </div>
     <h1 id="title">Ledgers</h1>
@@ -303,6 +303,22 @@
 
   // --- the period on screen -------------------------------------------------
 
+  /**
+   * What this login may see. The server says so on every start, so it is right
+   * again after a reload, when the token comes back from storage and there is
+   * no sign-in to answer.
+   *
+   * Hiding the tab is a courtesy, not the lock: the pnl action refuses on the
+   * server whatever the phone shows.
+   */
+  var CAN_PL = true;
+
+  function showRights(fy) {
+    CAN_PL = fy.pnl !== false;
+    $('tabPL').hidden = !CAN_PL;
+    if (!CAN_PL && VIEW === 'pl') backToList();
+  }
+
   function buildPeriods(fy) {
     FY = fy;
     PERIOD = { from: fy.from, to: fy.to, label: fy.label };
@@ -363,6 +379,7 @@
 
   function showProfitLoss() {
     mark('showProfitLoss');
+    if (!CAN_PL) { backToList(); return; }
     VIEW = 'pl';
     current = null;
     setTab('tabPL');
@@ -570,6 +587,7 @@
       '<div class="total"><span>Total</span><span>' + money(draftTotal()) + '</span></div>' +
       '<button class="primary" id="place">Place order</button>' +
       '<button class="more" id="batch">Orders waiting to send</button>' +
+      '<button class="more" id="newparty">Open a party with a balance</button>' +
       '<p class="note" style="margin-top:10px">Saving writes the entry into Jolly, ' +
       'not yet delivered. It reaches the ledger when you confirm delivery there.</p>';
 
@@ -736,6 +754,68 @@
     $('addline').onclick = function () { draft.push(blankLine()); drawOrderForm(); };
     $('place').onclick = placeOrder;
     if ($('batch')) $('batch').onclick = function () { showBatch(); };
+    if ($('newparty')) $('newparty').onclick = showNewParty;
+  }
+
+  /**
+   * Open a party, with an opening balance, from the app.
+   *
+   * The New Parties tab in Jolly does the same job, but only for someone who can
+   * edit Zen and Hook as well — the menu there runs as whoever clicks it. This
+   * goes through the deployment, which runs as the owner, so it works from an
+   * account that has no access to those files at all.
+   */
+  function showNewParty() {
+    mark('showNewParty');
+    VIEW = 'orders';
+    setTab('tabOrders');
+    $('search').hidden = true; $('back').hidden = true;
+    $('periods').hidden = true; $('range').hidden = true;
+    $('title').textContent = 'New party';
+
+    $('main').innerHTML =
+      '<div class="field"><label>Party name</label>' +
+        '<input id="pname" autocomplete="off" placeholder="As it should read on the ledger"></div>' +
+      '<div class="g2">' +
+        '<div class="field"><label>Opening balance</label>' +
+          '<input id="popen" type="number" inputmode="decimal" value="0"></div>' +
+        '<div class="field"><label>Dr / Cr</label>' +
+          '<select id="pside"><option value="Dr">Dr — they owe you</option>' +
+          '<option value="Cr">Cr — you owe them</option></select></div>' +
+      '</div>' +
+      '<button class="primary" id="psave">Open the party</button>' +
+      '<button class="more" id="pback">Back to the order</button>' +
+      '<p class="note" style="margin-top:10px">It gets its own ledger at once. ' +
+      'Leave the balance at nil if they are starting fresh.</p>';
+
+    $('pback').onclick = showOrders;
+    $('psave').onclick = function () {
+      var name = ($('pname').value || '').trim();
+      if (!name) { alert('Give the party a name.'); return; }
+
+      $('psave').disabled = true;
+      $('psave').textContent = 'Opening…';
+
+      api('partyNew', { token: TOKEN, name: name,
+                        opening: $('popen').value, side: $('pside').value })
+        .then(function (r) {
+          // The list the order form offers is now out of date, so it is
+          // refetched rather than patched — one source, not two.
+          parties = [];
+          return api('parties', { token: TOKEN, from: PERIOD.from, to: PERIOD.to })
+            .then(function (p) { parties = p.data; return r; });
+        })
+        .then(function (r) {
+          draftParty = r.data.name;
+          showOrders();
+          alert(r.data.message);
+        })
+        .catch(function (e) {
+          $('psave').disabled = false;
+          $('psave').textContent = 'Open the party';
+          alert(e.message);
+        });
+    };
   }
 
   /** Updates the two derived figures in place, without rebuilding the form. */
@@ -910,6 +990,7 @@
     api('periods', { token: TOKEN })
       .then(function (r) {
         buildPeriods(r.data);
+        showRights(r.data);
         return api('parties', { token: TOKEN, from: PERIOD.from, to: PERIOD.to });
       })
       .then(function (r) { parties = r.data; backToList(); })
