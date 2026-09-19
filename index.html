@@ -198,7 +198,7 @@
       <!-- Which build is actually loaded. A phone can serve a cached copy for
            hours, and without this there is no way to tell that apart from a
            fault in the code — which cost an afternoon once. -->
-      <span class="note" id="build" style="cursor:pointer">build 14</span>
+      <span class="note" id="build" style="cursor:pointer">build 15</span>
       <button class="link" id="out">Sign out</button>
     </div>
     <h1 id="title">Ledgers</h1>
@@ -392,28 +392,49 @@
     api('pnl', { token: TOKEN, from: PERIOD.from, to: PERIOD.to }).then(function (r) {
       if (!stillWanted(ticket)) return;
       var d = r.data;
+
+      // Sales are at goods value: GST collected is not income, it passes
+      // through. And a purchase is not a cost — it turns money into stock. The
+      // cost is what went OUT of the godown, at what it cost to be there.
       var html = '<div class="pl">' +
         '<div class="l head"><span>Income</span><span></span></div>' +
         line('Sales', d.sales) +
-        '<div class="l head"><span>Costs</span><span></span></div>' +
-        line('Purchases', d.purchases);
+        '<div class="l sub"><span class="note">' +
+          (d.soldQty ? money(d.soldQty) + ' units, no GST' : 'no GST') +
+        '</span><span></span></div>' +
+        line('Cost of goods sold', d.costOfSales) +
+        line('Gross profit', d.gross, 'tot') + '</div>';
+
+      html += '<div class="pl">' +
+        '<div class="l head"><span>Expenses</span><span></span></div>';
 
       d.expenses.forEach(function (e) { html += line(e.name, e.amount, 'sub'); });
       if (!d.expenses.length) {
         html += '<div class="l sub"><span class="note">No expenses in this period</span><span></span></div>';
       }
 
-      html += line('Total costs', d.totalCost, 'tot') + '</div>';
+      html += line('Total expenses', d.expenseTotal, 'tot');
+      html += line(d.tLossRate ? 'T Loss (' + Math.round(d.tLossRate * 100) + '% of sales)' : 'T Loss',
+                   d.tLoss) + '</div>';
 
       // Bills entered on the Expense tab and not yet paid. Shown apart from the
       // costs on purpose: nothing has been spent, so it is not a cost yet —
       // but it should not look as though those entries went nowhere.
-      if (d.billsRecorded) {
-        html += '<div class="pl"><div class="l">' +
-          '<span class="note">Bills recorded, not yet paid</span>' +
-          '<span class="note v">' + money(d.billsRecorded) + '</span></div>' +
-          '<div class="l"><span class="note">Counted when the money leaves</span>' +
-          '<span></span></div></div>';
+      if (d.billsRecorded || d.purchases) {
+        html += '<div class="pl">';
+        if (d.purchases) {
+          html += '<div class="l"><span class="note">Stock bought in this period</span>' +
+            '<span class="note v">' + money(d.purchases) + '</span></div>' +
+            '<div class="l"><span class="note">Counted when the goods are sold</span>' +
+            '<span></span></div>';
+        }
+        if (d.billsRecorded) {
+          html += '<div class="l"><span class="note">Bills recorded, not yet paid</span>' +
+            '<span class="note v">' + money(d.billsRecorded) + '</span></div>' +
+            '<div class="l"><span class="note">Counted when the money leaves</span>' +
+            '<span></span></div>';
+        }
+        html += '</div>';
       }
 
       html += '<div class="pl"><div class="l">' +
@@ -1120,8 +1141,6 @@
 
     L.push('*Closing: ' + money(d.balance) + ' ' + side(d.balance) + '*');
     L.push('Debit ' + money(d.totalDebit) + '  ·  Credit ' + money(d.totalCredit));
-    L.push('');
-    L.push('SHAH & CO');
     return L.join('\n');
   }
 
